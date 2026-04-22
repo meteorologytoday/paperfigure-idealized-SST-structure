@@ -8,7 +8,122 @@ import datetime
 import os
 import wrf_preprocess
 
+def genBudgetAnalysis(
+    ds,
+    data_interval,
+):
+   
+    print(ds)
+    print(data_interval)
+    ds = ds.mean(dim="south_north")
+ 
+    Nx = ds.dims['west_east']
+    Nz = ds.dims['bottom_top']
 
+    Z_W = ( (ds.PHB + ds.PH) / 9.81 ).to_numpy()
+    Z_T = ds["T"].copy().rename("Z_T")
+    Z_T.data[:] = (Z_W[:, 1:, :] + Z_W[:, :-1, :]) / 2
+
+    dZ_T = Z_W[:, 1:, :] - Z_W[:, :-1, :]    
+
+    dZ_W = np.zeros_like(ds["PH"])
+    dZ_Wm2 = ( dZ_T[:, 1:, :] + dZ_T[:, :-1, :] ) / 2
+    dZ_W[:, 0, :] = np.inf
+    dZ_W[:, -1, :] = np.inf
+    dZ_W[:, 1:-1, :] = dZ_Wm2
+    
+    def ddz_T_to_W(a_T):
+        dadz_Wm2 = (a_T[:, 1:, :] - a_T[:, :-1, :]) / dZ_Wm2
+        print(dadz_Wm2.shape)
+        return np.pad(dadz_Wm2, ((0,0), (1,1), (0,0)), mode="constant", constant_values=0)
+
+    def ddz_W_to_T(a_W):
+        dadz_T = (a_W[:, 1:, :] - a_W[:, :-1, :]) / dZ_T
+        return dadz_T 
+    
+    # Compute gradient of temperature on W grid
+    dthetadz = ddz_T_to_W(ds["T"].to_numpy())
+    
+    # Compute temperature flux on W grid
+    print("Shape of dthetadz: ", dthetadz.shape)
+    print("Shape of EXCH_H: ", ds["EXCH_H"].to_numpy().shape)
+    theta_turbulent_flux = dthetadz * ds["EXCH_H"].to_numpy()
+    
+    # Compute flux convergence
+    tendency_convergence_of_theta_turbulent_flux = - ddz_W_to_T(theta_turbulent_flux)
+    
+    # Compute change of temperature in time
+    theta = ds["T"].to_numpy()
+    tendency_potential_temperature = (theta[2:, :, :] - theta[:-2]) / data_interval.total_seconds()
+    tendency_potential_temperature = np.pad(tendency_potential_temperature, ((1,1), (0, 0), (0,0)), mode="constant", constant_values=0)
+    
+    
+    # Convert into DataArrays
+    da_tendency_convergence_of_theta_turbulent_flux = xr.zeros_like(ds["T"]).rename("tendency_convergence_of_theta_turbulent_flux").load()
+    da_tendency_convergence_of_theta_turbulent_flux.values[:, :, :] = tendency_convergence_of_theta_turbulent_flux 
+    
+    da_tendency_potential_temperature = xr.zeros_like(ds["T"]).rename("tendency_potential_temperature").load()
+    da_tendency_potential_temperature.values[:, :, :] = tendency_potential_temperature
+    ds = xr.merge([
+        da_tendency_convergence_of_theta_turbulent_flux,
+        da_tendency_potential_temperature,
+    ])
+
+    return ds
+
+if __name__ == "__main__":
+
+    parser = argparse.ArgumentParser(description='Process some integers.')
+    parser.add_argument('--input-dir', type=str, help='Input directory.', required=True)
+    parser.add_argument('--time-rng', type=int, nargs=2, help="Time range in hours after --exp-beg-time", required=True)
+    parser.add_argument('--exp-beg-time', type=str, help='analysis beg time', required=True)
+    parser.add_argument('--wrfout-data-interval', type=int, help='Time interval between each adjacent record in wrfout files in seconds.', required=True)
+    parser.add_argument('--frames-per-wrfout-file', type=int, help='Number of frames in each wrfout file.', required=True)
+    parser.add_argument('--wrfout-suffix', type=str, default="")
+    args = parser.parse_args()
+
+    print(args)
+
+    exp_beg_time = pd.Timestamp(args.exp_beg_time)
+    wrfout_data_interval = pd.Timedelta(seconds=args.wrfout_data_interval)
+    time_beg = exp_beg_time + pd.Timedelta(hours=args.time_rng[0])
+    time_end = exp_beg_time + pd.Timedelta(hours=args.time_rng[1])
+    wsm = wrf_load_helper.WRFSimMetadata(
+        start_datetime  = exp_beg_time,
+        data_interval   = wrfout_data_interval,
+        frames_per_file = args.frames_per_wrfout_file,
+    )
+    
+    print("Loading wrf dir: %s" % (args.input_dir,))
+    ds = wrf_load_helper.loadWRFDataFromDir(
+        wsm, 
+        args.input_dir,
+        beg_time = time_beg,
+        end_time = time_end,
+        suffix=args.wrfout_suffix,
+        avg=None,
+        verbose=False,
+        inclusive="left",
+    )
+
+    DX = ds.attrs["DX"]
+
+    ds = xr.merge([
+        #ds,
+        genBudgetAnalysis(ds, wsm.data_interval),
+    ])#.mean(dim="time")
+
+    Nx = len(ds.coords["west_east"])
+    Lx = DX * Nx
+    X_sU = DX * np.arange(Nx+1)
+    X_sT = (X_sU[1:] + X_sU[:-1]) / 2
+
+
+    print("Result: ", ds)
+
+    ds.mean(dim="west_east").to_netcdf("TEST.nc")
+
+"""
 def genBudgetAnalysis(
     ds,
     data_interval,
@@ -115,54 +230,7 @@ def genBudgetAnalysis(
 
     return new_ds
 
+"""
 
 
-if __name__ == "__main__":
 
-    parser = argparse.ArgumentParser(description='Process some integers.')
-    parser.add_argument('--input-dir', type=str, help='Input directory.', required=True)
-    parser.add_argument('--time-rng', type=int, nargs=2, help="Time range in hours after --exp-beg-time", required=True)
-    parser.add_argument('--exp-beg-time', type=str, help='analysis beg time', required=True)
-    parser.add_argument('--wrfout-data-interval', type=int, help='Time interval between each adjacent record in wrfout files in seconds.', required=True)
-    parser.add_argument('--frames-per-wrfout-file', type=int, help='Number of frames in each wrfout file.', required=True)
-    parser.add_argument('--wrfout-suffix', type=str, default="")
-    args = parser.parse_args()
-
-    print(args)
-
-    exp_beg_time = pd.Timestamp(args.exp_beg_time)
-    wrfout_data_interval = pd.Timedelta(seconds=args.wrfout_data_interval)
-    time_beg = exp_beg_time + pd.Timedelta(hours=args.time_rng[0])
-    time_end = exp_beg_time + pd.Timedelta(hours=args.time_rng[1])
-    wsm = wrf_load_helper.WRFSimMetadata(
-        start_datetime  = exp_beg_time,
-        data_interval   = wrfout_data_interval,
-        frames_per_file = args.frames_per_wrfout_file,
-    )
-    
-    print("Loading wrf dir: %s" % (args.input_dir,))
-    ds = wrf_load_helper.loadWRFDataFromDir(
-        wsm, 
-        args.input_dir,
-        beg_time = time_beg,
-        end_time = time_end,
-        suffix=args.wrfout_suffix,
-        avg=None,
-        verbose=False,
-        inclusive="left",
-    )
-
-    DX = ds.attrs["DX"]
-
-    ds = xr.merge([
-        ds,
-        wrf_preprocess.genAnalysis(ds, wsm.data_interval),
-    ]).mean(dim="time")
-
-    Nx = len(ds.coords["west_east"])
-    Lx = DX * Nx
-    X_sU = DX * np.arange(Nx+1)
-    X_sT = (X_sU[1:] + X_sU[:-1]) / 2
-
-
-    print("Result: ", ds)

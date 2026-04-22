@@ -3,7 +3,7 @@
 source 00_setup.sh
 
 
-offset=$(( 24 * 5 ))
+offset=$(( 24 * 10 ))
 dhr=$(( 12 ))
 
 for U in 15 ; do
