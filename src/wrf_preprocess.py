@@ -3,6 +3,108 @@ import pandas as pd
 import numpy as np
 from shared_constants import *
 
+def horDecomp(da, name_m="mean", name_p="prime"):
+    m = da.mean(dim="west_east").rename(name_m)
+    p = (da - m).rename(name_p) 
+    return m, p
+
+def genBudgetAnalysis(
+    ds,
+    data_interval,
+):
+   
+    ds = ds.mean(dim="south_north")
+ 
+    Nx = ds.dims['west_east']
+    Nz = ds.dims['bottom_top']
+
+    Z_W = ( (ds.PHB + ds.PH) / 9.81 ).to_numpy()
+    Z_T = ds["T"].copy().rename("Z_T")
+    Z_T.data[:] = (Z_W[:, 1:, :] + Z_W[:, :-1, :]) / 2
+
+    dZ_T = Z_W[:, 1:, :] - Z_W[:, :-1, :]    
+
+    dZ_W = np.zeros_like(ds["PH"])
+    dZ_Wm2 = ( dZ_T[:, 1:, :] + dZ_T[:, :-1, :] ) / 2
+    dZ_W[:, 0, :] = np.inf
+    dZ_W[:, -1, :] = np.inf
+    dZ_W[:, 1:-1, :] = dZ_Wm2
+    
+    def ddz_T_to_W(a_T):
+        dadz_Wm2 = (a_T[:, 1:, :] - a_T[:, :-1, :]) / dZ_Wm2
+        print(dadz_Wm2.shape)
+        return np.pad(dadz_Wm2, ((0,0), (1,1), (0,0)), mode="constant", constant_values=0)
+
+    def ddz_W_to_T(a_W):
+        dadz_T = (a_W[:, 1:, :] - a_W[:, :-1, :]) / dZ_T
+        return dadz_T 
+
+    def convert_to_DataArray(arr, ref, name="X"):
+        da = xr.zeros_like(ds[ref]).load()
+        da[:] = arr
+        return da.rename(name)
+
+    W_W = ds["W"].to_numpy()
+    W_T = xr.zeros_like(ds["T"]).rename("W_T").load()
+    W_T.values[:, :, :] = (W_W[:, 1:, :] + W_W[:, :-1, :]) / 2
+    _, W_p = horDecomp(W_T)
+
+    def compute_resolved_turbulent(da):
+        X_m, X_p = horDecomp(da)
+        WpXp = (W_p * X_p).mean(dim="west_east")
+        return WpXp.rename(f"resolved_turbulent_flux_{da.name:s}")
+    
+    U_T = xr.zeros_like(ds["T"]).load().rename("U")
+    U_T[:, :, :] = (ds["U"].isel(west_east_stag=slice(1, None)).to_numpy() + ds["U"].isel(west_east_stag=slice(0, -1)).to_numpy()) / 2
+
+    # Compute resolvedd turbulenet flux
+    da_resolved_turbulent_flux_theta = compute_resolved_turbulent(ds["T"].rename("theta"))
+    da_resolved_turbulent_flux_QVAPOR = compute_resolved_turbulent(ds["QVAPOR"])
+    da_resolved_turbulent_flux_U = compute_resolved_turbulent(U_T)
+
+    # Compute gradient of temperature on W grid
+    dthetadz = ddz_T_to_W(ds["T"].to_numpy())
+    dQVAPORdz = ddz_T_to_W(ds["QVAPOR"].to_numpy())
+    dUdz = ddz_T_to_W(U_T.to_numpy())
+
+    # Compute temperature flux on W grid
+    da_turbulent_flux_theta = convert_to_DataArray( - dthetadz * ds["EXCH_H"].to_numpy(), "W", "turbulent_flux_theta")
+    da_turbulent_flux_QVAPOR = convert_to_DataArray(- dQVAPORdz * ds["EXCH_H"].to_numpy(), "W", "turbulent_flux_QVAPOR")
+    da_turbulent_flux_U = convert_to_DataArray( - dQVAPORdz * ds["EXCH_M"].to_numpy(), "W", "turbulent_flux_U")
+        
+    # Compute flux convergence
+    da_tendency_convergence_of_turbulent_flux_theta = convert_to_DataArray( - ddz_W_to_T(da_turbulent_flux_theta.to_numpy()), "T", "tendency_convergence_of_turbulent_flux_theta")
+    da_tendency_convergence_of_turbulent_flux_QVAPOR = convert_to_DataArray( - ddz_W_to_T(da_turbulent_flux_QVAPOR.to_numpy()), "T", "tendency_convergence_of_turbulent_flux_QVAPOR")
+    da_tendency_convergence_of_turbulent_flux_U = convert_to_DataArray( - ddz_W_to_T(da_turbulent_flux_U.to_numpy()), "T", "tendency_convergence_of_turbulent_flux_U")
+    
+    # Compute change of tracer in time
+    def compute_tendency_explicitly(da):
+        X = da.to_numpy()
+        new_da = xr.zeros_like(da).load()
+        tendency_X = (X[2:, :, :] - X[:-2]) / data_interval.total_seconds()
+        tendency_X = np.pad(tendency_X, ((1,1), (0, 0), (0,0)), mode="constant", constant_values=0)
+        new_da.values[:, :, :] = tendency_X
+        return new_da.rename(f"tendency_{da.name}")
+
+    da_tendency_theta  = compute_tendency_explicitly(ds["T"].rename("theta"))
+    da_tendency_QVAPOR = compute_tendency_explicitly(ds["QVAPOR"])
+    da_tendency_U      = compute_tendency_explicitly(U_T)
+    
+    return xr.merge([
+        da_resolved_turbulent_flux_theta,
+        da_resolved_turbulent_flux_QVAPOR,
+        da_resolved_turbulent_flux_U,
+        da_turbulent_flux_theta,
+        da_turbulent_flux_QVAPOR,
+        da_turbulent_flux_U,
+        da_tendency_convergence_of_turbulent_flux_theta,
+        da_tendency_convergence_of_turbulent_flux_QVAPOR,
+        da_tendency_convergence_of_turbulent_flux_U,
+        da_tendency_theta,
+        da_tendency_QVAPOR,
+        da_tendency_U,
+    ])
+
 
 
 def genDivAnalysis(
