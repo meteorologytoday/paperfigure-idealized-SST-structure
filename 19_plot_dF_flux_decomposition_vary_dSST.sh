@@ -33,7 +33,7 @@ for hr_beg in 240 ; do
         --output $output_file \
         --delta-analysis \
         --varying-param dSST \
-        --fixed-params U wnm \
+        --fixed-params Ug wnm \
         --fixed-param-values $U $wnm \
         --LH-rng -35 10 \
         --HFX-rng -5 5 \
