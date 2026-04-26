@@ -208,6 +208,7 @@ def findFilenameFromDateRange(wsm, time_rng, dirname, inclusive="left", prefix=w
     
     fnames = []
     for i, wrfout_info in enumerate(wrfout_infos):
+        print("Check if this file is needed: ", wrfout_info["fname"])
         if ( beg_dt <= wrfout_info["time"] ) and ( wrfout_info["time"] <= end_dt ):
             verbose and print("Want this file: ", wrfout_info["fname"])
             fnames.append(wrfout_info["fname"])
@@ -318,9 +319,8 @@ def loadWRFDataFromDir(wsm, input_dir, beg_time, end_time=None, prefix=wrfout_pr
     test_ds = xr.open_dataset(fnames[0], decode_times=False, engine=engine)
   
     if 'time' in test_ds:
-        print(fnames)
+        print("Going to open: ", fnames)
         ds = xr.open_mfdataset(fnames, decode_times=True, engine=engine, concat_dim=["time"], combine='nested')
-        
  
     else:
         ds = xr.open_mfdataset(fnames, decode_times=False, engine=engine, concat_dim=["Time"], combine='nested')
@@ -371,11 +371,21 @@ def loadWRFDataFromDir(wsm, input_dir, beg_time, end_time=None, prefix=wrfout_pr
     #ds = ds.isel( time = slice(start_select, start_select + len(select_dts) ) )
     #print("before selection: ", ds.coords)
     #print("needed_dts: ",select_dts)
-
+  
+    #select_dts = list(select_dts)
+    #print("Select_dts: ", select_dts) 
+    """
+    idx = [] 
+    for i, dt in enumerate(select_dts):
+        if dt in ds_dts:
+            idx.append(i)
+        else:
+            print("Time not found: ", dt)
+    """
     idx = [ i for i, dt in enumerate(ds.coords["time"].to_numpy()) if dt in select_dts ]
 
     if len(idx) != len(select_dts):
-        raise Exception("Some dt does not exists: ", select_dts)
+        raise Exception(f"Some dt (found {len(idx)} out of {len(select_dts)}) does not exists: ", select_dts)
 
     ds = ds.isel( time = idx )
     ts = ds.coords["time"] 
