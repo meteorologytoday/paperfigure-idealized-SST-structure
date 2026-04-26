@@ -37,7 +37,7 @@ def genTKEBudget(
 
 
     Z_T_idx_target = np.argmin(np.abs(Z_T.mean(dim=["time", "west_east"]).to_numpy() - integrate_threshold)) 
-    
+    print(f"Z_T_index_target : {Z_T_index_target}") 
     N2 = g0/theta0 * ( ds["T"].isel(bottom_top=Z_T_idx_target).to_numpy() - ds["T"].isel(bottom_top=0).to_numpy() ) / ( Z_T.isel(bottom_top=Z_T_idx_target).to_numpy() - Z_T.isel(bottom_top=0).to_numpy())
     N2 = ds["BR"].copy(data=N2).rename("N2")
 
