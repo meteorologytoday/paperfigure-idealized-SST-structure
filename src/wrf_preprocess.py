@@ -3,10 +3,48 @@ import pandas as pd
 import numpy as np
 from shared_constants import *
 
+
+
 def horDecomp(da, name_m="mean", name_p="prime"):
     m = da.mean(dim="west_east").rename(name_m)
     p = (da - m).rename(name_p) 
     return m, p
+
+def genTKEBudget(
+    ds,
+    integrate_threshold = 500, # below this height in meter
+):
+    ds = ds.mean(dim="south_north")
+
+    def W_to_T(da):
+        avg = (da.isel(bottom_top_stag=slice(0,-1)).to_numpy() + da.isel(bottom_top_stag=slice(1,None)).to_numpy()) / 2
+        return ds["T"].copy(data=avg).rename(da.name)
+
+    Z_W = ( (ds.PHB + ds.PH) / 9.81 ).to_numpy()
+    Z_T = ds["T"].copy(data=(Z_W[:, 1:, :] + Z_W[:, :-1, :]) / 2).rename("Z_T")
+    da_dmass = ds["T"].copy( data = - (ds.PB+ds.P).diff('bottom_top_stag').to_numpy() / g0).rename("dmass")
+   
+    variables_to_process = [
+        W_to_T(ds[varname]) for varname in ["QSHEAR", "QWT", "QBUOY", "QDISS"]
+    ] + [
+        ds[varname] for varname in ["QKE", "DTKE"]
+    ]
+
+    new_ds = xr.merge([
+        _da.where(Z_T < integrate_threshold).weighted(da_dmass).mean(dim=["bottom_top", "west_east"], skipna=True).rename(f"near_surface_{_da.name}")
+        for _da in variables_to_process
+    ])
+
+
+    Z_T_idx_target = np.argmin(np.abs(Z_T.mean(dim=["time", "west_east"]).to_numpy() - integrate_threshold)) 
+    
+    N2 = g0/theta0 * ( ds["T"].isel(bottom_top=Z_T_idx_target).to_numpy() - ds["T"].isel(bottom_top=0).to_numpy() ) / ( Z_T.isel(bottom_top=Z_T_idx_target).to_numpy() - Z_T.isel(bottom_top=0).to_numpy())
+    N2 = ds["BR"].copy(data=N2).rename("N2")
+
+    new_ds = xr.merge([new_ds, N2])
+
+    return new_ds
+
 
 def genBudgetAnalysis(
     ds,
@@ -19,8 +57,7 @@ def genBudgetAnalysis(
     Nz = ds.dims['bottom_top']
 
     Z_W = ( (ds.PHB + ds.PH) / 9.81 ).to_numpy()
-    Z_T = ds["T"].copy().rename("Z_T")
-    Z_T.data[:] = (Z_W[:, 1:, :] + Z_W[:, :-1, :]) / 2
+    Z_T = ds["T"].copy(data=(Z_W[:, 1:, :] + Z_W[:, :-1, :]) / 2).rename("Z_T")
 
     dZ_T = Z_W[:, 1:, :] - Z_W[:, :-1, :]    
 
@@ -44,6 +81,11 @@ def genBudgetAnalysis(
         da[:] = arr
         return da.rename(name)
 
+    def W_to_T(da):
+        avg = (da.isel(bottom_top_stag=slice(0,-1)).to_numpy() + da.isel(bottom_top_stag=slice(1,None)).to_numpy()) / 2
+        return ds["T"].copy(data=avg)
+        
+        return da_avg
     W_W = ds["W"].to_numpy()
     W_T = xr.zeros_like(ds["T"]).rename("W_T").load()
     W_T.values[:, :, :] = (W_W[:, 1:, :] + W_W[:, :-1, :]) / 2
@@ -80,16 +122,14 @@ def genBudgetAnalysis(
     # Compute change of tracer in time
     def compute_tendency_explicitly(da):
         X = da.to_numpy()
-        new_da = xr.zeros_like(da).load()
         tendency_X = (X[2:, :, :] - X[:-2]) / data_interval.total_seconds()
         tendency_X = np.pad(tendency_X, ((1,1), (0, 0), (0,0)), mode="constant", constant_values=0)
-        new_da.values[:, :, :] = tendency_X
-        return new_da.rename(f"tendency_{da.name}")
+        return da.copy(data=tendency_X).rename(f"tendency_{da.name}")
 
     da_tendency_theta  = compute_tendency_explicitly(ds["T"].rename("theta"))
     da_tendency_QVAPOR = compute_tendency_explicitly(ds["QVAPOR"])
     da_tendency_U      = compute_tendency_explicitly(U_T)
-    
+  
     return xr.merge([
         da_resolved_turbulent_flux_theta,
         da_resolved_turbulent_flux_QVAPOR,
