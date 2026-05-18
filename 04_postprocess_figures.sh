@@ -74,47 +74,6 @@ done
 done
 done
 
-echo "Merge divergence tendency analysis... "
-for bl_scheme in MYNN25 MYJ YSU ; do 
-for dT in 100; do
-for target_lab in SIMPLE FULL; do
-for _U in 10 20 ; do
-
-    hrs_beg=240
-    dhr=$( get_dhr $bl_scheme ) 
-    hrs_end=$(( $hrs_beg + $dhr ))
-    hrs=${hrs_beg}-${hrs_end}
- 
-    if [ "$target_lab" = "FULL" ] ; then
-        mph="on"
-    else
-        mph="off"
-    fi
-    
-    svg_stack.py \
-        --direction=h \
-        $fig_dir/div_analysis_dhr-${dhr}/lab_${target_lab}/case_mph-${mph}_wnm010_U${_U}_dT100_${bl_scheme}/div_analysis_${hrs}_halfwindow-10.svg \
-        $fig_dir/div_analysis_dhr-${dhr}/lab_${target_lab}/case_mph-${mph}_wnm005_U${_U}_dT100_${bl_scheme}/div_analysis_${hrs}_halfwindow-10.svg \
-        > $fig_dir/merged-div_analysis_lab_${target_lab}_U${_U}_dT${dT}_${bl_scheme}.svg
-done
-done
-done
-done
-
-echo "Merge linearity"
-for bl_scheme in MYNN25 MYJ YSU ; do 
-    hrs_beg=240
-    dhr=$( get_dhr $bl_scheme ) 
-    hrs_end=$(( $hrs_beg + $dhr ))
-    hrs=${hrs_beg}-${hrs_end}
- 
-    svg_stack.py      \
-       --direction=h \
-        $fig_dir/linearity_analysis/linearity_vary_wnm_lab_SIMPLE_dSST100_U20_${bl_scheme}_hr${hrs}.svg \
-        $fig_dir/linearity_analysis/linearity_vary_wnm_lab_FULL_dSST100_U20_${bl_scheme}_hr${hrs}.svg \
-        > $fig_dir/merged-linearity_vary_wnm_${bl_scheme}_U20_hr${hrs}.svg
-done
-
 name_pairs=(
 
 # Main Text
@@ -124,15 +83,15 @@ name_pairs=(
     merged-snapshot-vertical-profile_wnm000_U20_dT000_MYNN25.svg                                   fig04
     merged-snapshot_wnm010_U20_dT100_MYNN25_part1.svg                                              fig05
     merged-snapshot_wnm010_U20_dT100_MYNN25_part2.svg                                              fig06
-    merged-div_analysis_lab_SIMPLE_U20_dT100_MYNN25.svg                                            fig07 
-    merged-div_analysis_lab_FULL_U20_dT100_MYNN25.svg                                              fig08
-    merged-div_analysis_lab_SIMPLE_U10_dT100_MYNN25.svg                                            fig09 
-    merged-div_analysis_lab_FULL_U10_dT100_MYNN25.svg                                              fig10 
-    dF_flux_decomposition_varying_dSST/lab_FULL/dF_flux_decomposition_onefig_U20_wnm010_varying_dSST_MYNN25_hr240-360.svg  fig11
-    dF_flux_decomposition_varying_wnm/lab_FULL/dF_flux_decomposition_onefig_U20_dSST100_varying_wnm_MYNN25_hr240-360.svg   fig12
-    merged-linearity_vary_wnm_MYNN25_U20_hr240-360.svg                                             fig13
-    coherence_analysis/coherence_on_dSST_vary_wnm_U20_dSST100_MYNN25_hr240-360.svg                 fig14
-    Ro_analysis/Ro_analysis_U20_vary_wnm_dSST100_MYNN25_hr240-360.svg                              fig15
+    dF_flux_decomposition_varying_dSST/lab_FULL/dF_flux_decomposition_onefig_U20_wnm010_varying_dSST_MYNN25_hr240-360.svg  fig07
+    integrated_relationship/integrated_relationship-varying-dT-MYNN25_lab_FULL.svg                        fig08
+    dF_flux_decomposition_varying_wnm/lab_FULL/dF_flux_decomposition_onefig_U20_dSST100_varying_wnm_MYNN25_hr240-360.svg   fig09
+    integrated_relationship/integrated_relationship-varying-L-MYNN25_lab_FULL.svg                  fig10
+    linearity_analysis/linearity_vary_wnm_lab_FULL_dSST100_U20_MYNN25_hr240-360.svg                fig11
+    merged-div_analysis_lab_SIMPLE_U20_dT100_MYNN25.svg                                            fig12 
+    merged-div_analysis_lab_FULL_U20_dT100_MYNN25.svg                                              fig13
+    merged-div_analysis_lab_SIMPLE_U10_dT100_MYNN25.svg                                            fig14 
+    merged-div_analysis_lab_FULL_U10_dT100_MYNN25.svg                                              fig15 
 
 # Supplementary
     cloud_rain_snapshots_dhr-1/lab_FULL/case_mph-on_wnm010_U20_dT100_MYNN25/cloud_rain_240-241.svg   figS01
@@ -142,16 +101,21 @@ name_pairs=(
     merged-snapshot_wnm010_U20_dT100_MYJ_part1.svg                                                   figS04
     merged-snapshot_wnm010_U20_dT100_MYJ_part2.svg                                                   figS05
     dF_flux_decomposition_varying_dSST/lab_FULL/dF_flux_decomposition_onefig_U20_wnm010_varying_dSST_MYJ_hr240-360.svg  figS06
-    dF_flux_decomposition_varying_wnm/lab_FULL/dF_flux_decomposition_onefig_U20_dSST100_varying_wnm_MYJ_hr240-360.svg   figS07
+    integrated_relationship/integrated_relationship-varying-dT-MYJ_lab_FULL.svg                      figS07
+    dF_flux_decomposition_varying_wnm/lab_FULL/dF_flux_decomposition_onefig_U20_dSST100_varying_wnm_MYJ_hr240-360.svg   figS08
+    integrated_relationship/integrated_relationship-varying-L-MYJ_lab_FULL.svg                       figS09
+    linearity_analysis/linearity_vary_wnm_lab_FULL_dSST100_U20_MYJ_hr240-360.svg                     figS10
 
 # YSU
-    timeseries/timeseries_wnm010_U20_dT100_YSU_timeseries_smooth-25_000-360.svg                      figS08
-    merged-snapshot-vertical-profile_wnm000_U20_dT000_YSU.svg                                        figS09
-    merged-snapshot_wnm010_U20_dT100_YSU_part1.svg                                                   figS10
-    merged-snapshot_wnm010_U20_dT100_YSU_part2.svg                                                   figS11
-    dF_flux_decomposition_varying_dSST/lab_FULL/dF_flux_decomposition_onefig_U20_wnm010_varying_dSST_YSU_hr240-360.svg  figS12
-    dF_flux_decomposition_varying_wnm/lab_FULL/dF_flux_decomposition_onefig_U20_dSST100_varying_wnm_YSU_hr240-360.svg   figS13
-
+    timeseries/timeseries_wnm010_U20_dT100_YSU_timeseries_smooth-25_000-360.svg                      figS11
+    merged-snapshot-vertical-profile_wnm000_U20_dT000_YSU.svg                                        figS12
+    merged-snapshot_wnm010_U20_dT100_YSU_part1.svg                                                   figS13
+    merged-snapshot_wnm010_U20_dT100_YSU_part2.svg                                                   figS14
+    dF_flux_decomposition_varying_dSST/lab_FULL/dF_flux_decomposition_onefig_U20_wnm010_varying_dSST_YSU_hr240-360.svg  figS15
+    integrated_relationship/integrated_relationship-varying-dT-YSU_lab_FULL.svg                      figS16
+    dF_flux_decomposition_varying_wnm/lab_FULL/dF_flux_decomposition_onefig_U20_dSST100_varying_wnm_YSU_hr240-360.svg   figS17
+    integrated_relationship/integrated_relationship-varying-L-YSU_lab_FULL.svg                       figS18
+    linearity_analysis/linearity_vary_wnm_lab_FULL_dSST100_U20_YSU_hr240-360.svg                     figS19
 )
 
 N=$(( ${#name_pairs[@]} / 2 ))

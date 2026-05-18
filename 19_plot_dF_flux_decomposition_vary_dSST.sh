@@ -28,12 +28,12 @@ for hr_beg in 240 ; do
 
     mkdir -p $output_dir
 
-    python3 src/plot_flux_decomp.py \
+    python3 src/plot_flux_decomp_newlook.py \
         --input-file $input_file \
         --output $output_file \
         --delta-analysis \
         --varying-param dSST \
-        --fixed-params Ug wnm \
+        --fixed-params U wnm \
         --fixed-param-values $U $wnm \
         --LH-rng -35 10 \
         --HFX-rng -5 5 \

@@ -43,10 +43,13 @@ plot_codes=(
     $sh 19_plot_dF_flux_decomposition_vary_dSST.sh
 
     # Fig 10
+    $sh 84_review_integrated_relationship_analysis.sh
+
+    # Fig 11
     $sh 20_plot_dF_flux_decomposition_vary_wnm.sh
     
-    # Fig 11
-    $sh 21_plot_linearity.sh
+    # Fig 12
+    $sh 85_review_integrated_relationship_analysis_varying_dSST.sh
 
     # Fig 12
     $sh 22_plot_coherence_analysis_vary_wnm.sh

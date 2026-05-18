@@ -10,18 +10,51 @@ def horDecomp(da, name_m="mean", name_p="prime"):
     p = (da - m).rename(name_p) 
     return m, p
 
+def genBoundaryLayerAnalysis(
+    ds,
+    integrate_threshold = 500, # below this height in meter
+):
+
+    DX = ds.DX
+    ds = ds.mean(dim="south_north")
+
+    Z_W = ((ds.PHB + ds.PH) / 9.81).rename("Z_W")
+    Z_T = ds["T"].copy(data=(Z_W.isel(bottom_top_stag=slice(1,None)).to_numpy() + Z_W.isel(bottom_top_stag=slice(0, -1)).to_numpy()) / 2).rename("Z_T")
+    da_dmass = ds["T"].copy( data = - (ds.PB+ds.P).diff('bottom_top_stag').to_numpy() / g0).rename("dmass")
+   
+
+    Z_T_idx_target = np.argmin(np.abs(Z_T.mean(dim=["time", "west_east"]).to_numpy() - integrate_threshold)) 
+
+    print(f"Z_T_idx_target : {Z_T_idx_target}") 
+    N2 = g0/theta0 * ( ds["T"].isel(bottom_top=Z_T_idx_target).to_numpy() - ds["T"].isel(bottom_top=0).to_numpy() ) / ( Z_T.isel(bottom_top=Z_T_idx_target).to_numpy() - Z_T.isel(bottom_top=0).to_numpy())
+    N2 = ds["BR"].copy(data=N2).mean(dim="west_east").rename("N2")
+    
+    Z_W_idx_target = np.argmin(np.abs(Z_W.mean(dim=["time", "west_east"]).to_numpy() - 100.0)) 
+    print(f"Z_W_idx_target : {Z_W_idx_target}") 
+    W_max = ds["W"].isel(bottom_top_stag=Z_W_idx_target).max(dim="west_east").rename("W_max")
+    DIV10 = ( ( ds["U10"].roll(west_east=-1) - ds["U10"] ) / DX ).load()
+    CONV10 = - DIV10
+    DIV10_max = DIV10.where(DIV10.rank(dim="west_east", pct=True) > 0.9).mean(dim="west_east").rename("DIV10_max")
+    CONV10_max = CONV10.where(CONV10.rank(dim="west_east", pct=True) > 0.9).mean(dim="west_east").rename("CONV10_max")
+
+    new_ds = xr.merge([N2, W_max, DIV10_max, CONV10_max])
+    #print(new_ds)
+    return new_ds
+
 def genTKEBudget(
     ds,
     integrate_threshold = 500, # below this height in meter
 ):
+
+    DX = ds.DX
     ds = ds.mean(dim="south_north")
 
     def W_to_T(da):
         avg = (da.isel(bottom_top_stag=slice(0,-1)).to_numpy() + da.isel(bottom_top_stag=slice(1,None)).to_numpy()) / 2
         return ds["T"].copy(data=avg).rename(da.name)
 
-    Z_W = ( (ds.PHB + ds.PH) / 9.81 ).to_numpy()
-    Z_T = ds["T"].copy(data=(Z_W[:, 1:, :] + Z_W[:, :-1, :]) / 2).rename("Z_T")
+    Z_W = ((ds.PHB + ds.PH) / 9.81).rename("Z_W")
+    Z_T = ds["T"].copy(data=(Z_W.isel(bottom_top_stag=slice(1,None)).to_numpy() + Z_W.isel(bottom_top_stag=slice(0, -1)).to_numpy()) / 2).rename("Z_T")
     da_dmass = ds["T"].copy( data = - (ds.PB+ds.P).diff('bottom_top_stag').to_numpy() / g0).rename("dmass")
    
     variables_to_process = [
@@ -29,19 +62,11 @@ def genTKEBudget(
     ] + [
         ds[varname] for varname in ["QKE", "DTKE"]
     ]
-
+    
     new_ds = xr.merge([
         _da.where(Z_T < integrate_threshold).weighted(da_dmass).mean(dim=["bottom_top", "west_east"], skipna=True).rename(f"near_surface_{_da.name}")
         for _da in variables_to_process
     ])
-
-
-    Z_T_idx_target = np.argmin(np.abs(Z_T.mean(dim=["time", "west_east"]).to_numpy() - integrate_threshold)) 
-    print(f"Z_T_index_target : {Z_T_index_target}") 
-    N2 = g0/theta0 * ( ds["T"].isel(bottom_top=Z_T_idx_target).to_numpy() - ds["T"].isel(bottom_top=0).to_numpy() ) / ( Z_T.isel(bottom_top=Z_T_idx_target).to_numpy() - Z_T.isel(bottom_top=0).to_numpy())
-    N2 = ds["BR"].copy(data=N2).rename("N2")
-
-    new_ds = xr.merge([new_ds, N2])
 
     return new_ds
 

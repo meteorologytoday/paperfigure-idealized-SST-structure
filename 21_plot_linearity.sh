@@ -10,10 +10,12 @@ time_avg_interval=60   # minutes
 
 
 thumbnail_skip=0
-for hrs_beg in $(( 24 * 5 )) $(( 24 * 10 )) ; do
+#for hrs_beg in $(( 24 * 5 )) $(( 24 * 10 )) ; do
+for hrs_beg in $(( 24 * 10 )) ; do
 for dT in 100 ; do
 for bl_scheme in MYNN25 MYJ YSU ; do
-for target_lab in lab_SIMPLE lab_FULL ; do
+#for target_lab in lab_SIMPLE lab_FULL ; do
+for target_lab in lab_FULL ; do
 
     
     dhr=$( get_dhr $bl_scheme ) 
@@ -31,6 +33,7 @@ for target_lab in lab_SIMPLE lab_FULL ; do
     #for U in "${Us[@]}" ; do
     for U in 20 ; do
     for wnm in 004 005 007 010 020 040; do
+    #for wnm in 004 007; do
     
         if [[ "$target_lab" =~ "FULL" ]]; then
             mph=on
@@ -57,7 +60,8 @@ for target_lab in lab_SIMPLE lab_FULL ; do
     done
         
     varnames=(
-        TOA QOA CH CQ UA VA DIVA VORA
+        TOA QOA CH CD WNDA
+#        TOA QOA CH CQ UA VA DIVA VORA
     )
 
     linestyles=(
@@ -66,9 +70,9 @@ for target_lab in lab_SIMPLE lab_FULL ; do
         "solid"
         "dashed"
         "solid"
-        "dashed"
-        "solid"
-        "dashed"
+#        "dashed"
+#        "solid"
+#        "dashed"
     )
 
     linecolors=(
@@ -77,9 +81,9 @@ for target_lab in lab_SIMPLE lab_FULL ; do
         "reddishpurple"
         "reddishpurple"
         "skyblue"
-        "skyblue"
-        "orange"
-        "orange"
+#        "skyblue"
+#        "orange"
+#        "orange"
     )
 
     output_file=$output_dir/linearity_vary_wnm_${target_lab}_dSST${dT}_U${U}_${bl_scheme}_hr${hrs_beg}-${hrs_end}.svg
@@ -101,6 +105,8 @@ for target_lab in lab_SIMPLE lab_FULL ; do
         --varnames "${varnames[@]}"                \
         --thumbnail-skip $thumbnail_skip           \
         --ylim 0.8 1.02                            \
+        --legend-outside \
+        --no-linearity-index \
         --thumbnail-titles "$title"
     " &
 

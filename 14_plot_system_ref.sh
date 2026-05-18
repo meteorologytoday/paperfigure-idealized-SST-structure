@@ -17,9 +17,9 @@ target_labs=(
 )
 
 bl_schemes=(
-    MYNN25
     MYJ
     YSU
+    MYNN25
 )
 
 source 98_trapkill.sh

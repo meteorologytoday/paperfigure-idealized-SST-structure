@@ -27,7 +27,7 @@ for bl_scheme in MYNN25 MYJ YSU; do
 
     mkdir -p $output_dir
 
-    python3 src/plot_flux_decomp.py \
+    python3 src/plot_flux_decomp_newlook.py \
         --input-file $input_file \
         --output $output_file \
         --delta-analysis \

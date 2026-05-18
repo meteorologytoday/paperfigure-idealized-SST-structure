@@ -56,6 +56,18 @@ plot_infos = dict(
         label = "$C_{Q}$",
     ), 
 
+    CD = dict(
+        wrf_varname = "CD0",
+        label = "$C_{D}$",
+    ), 
+
+
+    WNDA = dict(
+        #selector = dict(bottom_top=0),
+        wrf_varname = "WND_sfc",
+        label = "$U_{A}$",
+        unit = "$ \\mathrm{m} \\, / \\, \\mathrm{s}$",
+    ), 
 
     UA = dict(
         selector = dict(bottom_top=0),
@@ -104,6 +116,7 @@ if __name__ == "__main__":
     parser.add_argument('--no-thumbnail-numbering', action="store_true")
     parser.add_argument('--no-legend', action="store_true")
     parser.add_argument('--no-title', action="store_true")
+    parser.add_argument('--no-linearity-index', action="store_true")
     parser.add_argument('--legend-outside', action="store_true")
     parser.add_argument('--time-rng', type=int, nargs=2, help="Time range in hours after --exp-beg-time", required=True)
     parser.add_argument('--exp-beg-time', type=str, help='analysis beg time', required=True)
@@ -195,7 +208,7 @@ if __name__ == "__main__":
     data = {
         measure : {
             varname : np.zeros( (len(args.tracking_wnms)), ) for varname in args.varnames
-        } for measure in ["linearity",]
+        } for measure in ["linearity", "magnitude", "angle"]
     }
     Ls = np.zeros( (len(args.tracking_wnms), ) )
     for i in range(len(args.input_dirs)):
@@ -291,15 +304,19 @@ if __name__ == "__main__":
 
         for varname in args.varnames:
             
-            print("Doing coherence analysis of %s" % (varname,)) 
             X1 = d_anom[varname]
             sp_X1 = np.fft.fft(X1)
             pow_X1 = np.abs(sp_X1)**2
+            ang_X1 = np.angle(sp_X1, deg=True)
+            #ang_X1[pow_X1**0.5 < args.magnitude_threshold] = 0.0
 
-            linearity = 2*pow_X1[tracking_wnm] / np.sum(pow_X1[1:])
+            linearity = pow_X1[tracking_wnm] / ( np.sum(pow_X1[1:]) / 2 )
+            magnitude = pow_X1[tracking_wnm]**0.5
+            angle = ang_X1[tracking_wnm]
             
-            print("linearity: ", linearity)
             data["linearity"][varname][i] = linearity
+            data["magnitude"][varname][i] = magnitude
+            data["angle"][varname][i] = angle
         
     # Plot data
     print("Loading Matplotlib...")
@@ -324,17 +341,17 @@ if __name__ == "__main__":
     import tool_fig_config
     import colorblind
 
-    ncol = 1
+    ncol = 2 + (0 if args.no_linearity_index else 1)
     nrow = 1
 
     figsize, gridspec_kw = tool_fig_config.calFigParams(
         w = 5,
         h = 4,
-        wspace = 1.0,
+        wspace = 1.2,
         hspace = 1.0,
         w_left = 1.0,
         w_right = 0.2,
-        h_bottom = 2.0,
+        h_bottom = 3.0,
         h_top = 1.0,
         ncol = ncol,
         nrow = nrow,
@@ -360,24 +377,28 @@ if __name__ == "__main__":
 
         varname_label = plot_info["label"] if "label" in plot_info else varname
         varname_label = "$\\delta$%s" % (varname_label,)
+        Ls_km = Ls / 1e3
 
-        _ax1 = ax[0, 0]
-        _ax1.plot(Ls / 1e3, data["linearity"][varname], marker='o', linestyle=linestyle, color=linecolor, label=varname_label)
-        
-    _ax1.set_ylabel("$\\beta\\left( k \\right)$")
-    _ax1.set_ylim(args.ylim)
+        _ax = ax.flatten()[0]
+        normalized_magnitude = data["magnitude"][varname]
+        normalized_magnitude /= np.amax(normalized_magnitude)
+        _ax.plot(Ls_km, data["magnitude"][varname], marker='o', linestyle=linestyle, color=linecolor, label=varname_label)
+        _ax.set_ylabel("Normalized Magnitude")
 
-        
+        _ax = ax.flatten()[1]
+        displaced_angle = - 90.0 - data["angle"][varname]
+        _ax.plot(Ls_km, displaced_angle, marker='o', linestyle=linestyle, color=linecolor, label=varname_label)
+        _ax.set_ylabel("Displaced Phase Angle [ degree ]")
+       
+        if not args.no_linearity_index:
+            _ax = ax.flatten()[2]
+            _ax.plot(Ls_km, data["linearity"][varname], marker='o', linestyle=linestyle, color=linecolor, label=varname_label)
+            _ax.set_ylabel("$\\beta\\left( k \\right)$")
+    
     if not args.no_title:
-        for i, title in enumerate(args.thumbnail_titles):
-            _ax = ax.flatten()[i]
-
-            if args.no_thumbnail_numbering:
-                numbering_str = ""
-            else: 
-                numbering_str = "(%s) " % (args.thumbnail_numbering[args.thumbnail_skip+0],)
-                
-            _ax.set_title("%s%s" % (numbering_str, title))
+        for i, _ax in enumerate(ax.flatten()):
+            numbering_str = "(%s) " % (args.thumbnail_numbering[args.thumbnail_skip+i],)
+            _ax.set_title("%s%s" % (numbering_str, ["Normalized Magnitude", "Phase Angle", "Linearity Index"][i]))
 
     for _ax in ax.flatten():
         _ax.grid()

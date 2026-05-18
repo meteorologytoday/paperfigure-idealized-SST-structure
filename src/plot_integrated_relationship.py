@@ -1,3 +1,4 @@
+from pathlib import Path
 import xarray as xr
 import pandas as pd
 import numpy as np
@@ -44,25 +45,80 @@ def loadData(
         verbose=False,
         inclusive="both",
     )
-   
-    ds_extra = wrf_preprocess.genTKEBudget(ds, integrate_threshold=1000).rolling(time=25).mean()
-    ds = ds["PBLH"]]
-    ds = xr.merge([ds_nonavg, ds_extra]).mean(dim=["west_east", "south_north"])
-    #ds = xr.merge([ds, ds_extra]).mean(dim=["west_east", "west_east_stag", "south_north"])
-    #ds = ds_extra
+  
+    merge = []
+    if "QKE" in ds:
+         merge.append(wrf_preprocess.genTKEBudget(ds, integrate_threshold=500).rolling(time=25).mean())
+
+    merge.append(wrf_preprocess.genBoundaryLayerAnalysis(ds, integrate_threshold=500).rolling(time=25).mean())
+    merge.append(ds[["PBLH"]])
+
+    ds = xr.merge(merge).mean(dim=["west_east", "south_north"]).rolling(time=25).mean()
+    
     ds = ds.expand_dims(ensemble=[ensemble_value,])
     return ds
 
+
+plot_infos = {
+    "DIV10_max" : dict(
+        label = "$\\delta_{\\mathrm{max}}$",
+        unit = "$\\mathrm{s}^{-1}$",
+    ),
+
+    "CONV10_max" : dict(
+        label = "10m convergence",
+        unit = "$\\mathrm{s}^{-1}$",
+    ),
+
+    "PBLH" : dict(
+        label = "PBLH",
+        unit = "$\\mathrm{m}$",
+    ),
+
+    "W_max" : dict(
+        label = "$w_{\\mathrm{max}}$",
+        unit = "$\\mathrm{m}\\,\\mathrm{s}^{-1}$",
+    ),
+    "N2" : dict(
+        label = "Mean $N^2$",
+        unit = "$\\mathrm{s}^{-2}$",
+    ),
+    "near_surface_QKE" : dict(
+        label = "TKE",
+        unit = "$\\mathrm{m}^2 \\, / \\mathrm{s}^{-2}$",
+    ),
+    "near_surface_QBUOY" : dict(
+        label = "$q_\\mathrm{buoy}$",
+        unit = "$\\mathrm{m}^2 \\, / \\mathrm{s}^{-2}$",
+    ),
+    "near_surface_QSHEAR" : dict(
+        label = "$q_\\mathrm{shear}$",
+        unit = "$\\mathrm{m}^2 \\, / \\mathrm{s}^{-2}$",
+    ),
+}
+
+
+
+
 def plot(
     ds,
+    ensemble_label,
     output_file,
 ):
 
+    
     plotting_variables = [
+        (["CONV10_max"], "total"),
         (["N2"], "total"),
+    ]
+
+    if "near_surface_QKE" in ds:
+        plotting_variables += [
+            ([f"near_surface_{v}" for v in ["QBUOY", "QSHEAR"]], "remove_mean"),
+            (["near_surface_QKE"], "total"),
+        ]
+    plotting_variables += [    
         (["PBLH"], "total"),
-        (["near_surface_QKE"], "total"),
-        ([f"near_surface_{v}" for v in ["DTKE", "QBUOY", "QSHEAR", "QDISS", "QWT"]], "remove_mean"),
     ]
 
     ncol = len(plotting_variables)
@@ -92,10 +148,13 @@ def plot(
         constrained_layout=False,
         squeeze=False,
     )
+            
+
    
     for i, (varnames, policy) in enumerate(plotting_variables):
-   
+        ax[0,i].set_title("(%s)" % ("abcdefg"[i],))
         for varname in varnames: 
+            plot_info = plot_infos[varname]
             da = ds[varname]
             offset = 0.0
             if policy == "total":
@@ -106,7 +165,7 @@ def plot(
                 raise Exception(f"Unknown Policy: {str(policy)}")
 
             print("da.std = ", da.std(dim="time"))
-
+            
             ax[0,i].errorbar(
                 ds.coords["ensemble"],
                 da.mean(dim="time") + offset,
@@ -114,12 +173,16 @@ def plot(
                 fmt='o-',
                 markersize=6,
                 capsize=5,
-                linewidth=1.5, elinewidth=1.5, label=varname
+                linewidth=1.5, elinewidth=1.5, label=plot_info["label"],
             )
-
+            ax[0,i].set_ylabel("[%s]" % (plot_info["unit"],))
+    
+    
     for _ax in ax.flatten():
+        _ax.set_xlabel(ensemble_label)
         _ax.grid(visible=True, which='major', axis='both')
         _ax.legend()
+
 
     print("Save figure: ", str(output_file))
     fig.savefig(output_file, dpi=200)
@@ -129,6 +192,7 @@ if __name__ == "__main__":
     parser.add_argument('--input-dirs', type=str, nargs="+", help='Input directory.', required=True)
     parser.add_argument('--casenames', type=str, nargs="+", help='Input directory.', required=True)
     parser.add_argument('--ensemble-values', type=float, nargs="+", help='Input directory.', required=True)
+    parser.add_argument('--ensemble-label', type=str, help='Ensemble xlabel.', default="")
     parser.add_argument('--avg-start-hours', type=int, nargs="+", help="The start of time ranges. It should match `--input-dirs`.", required=True)
     parser.add_argument('--hours-to-avg', type=int, help="Number of hours used to take average.", required=True)
     parser.add_argument('--exp-beg-time', type=str, help='analysis beg time', required=True)
@@ -142,6 +206,9 @@ if __name__ == "__main__":
     assert len(args.casenames) == N_cases
     assert len(args.avg_start_hours) == N_cases
     assert len(args.ensemble_values) == N_cases
+    
+    output_file = Path(args.output_file)
+    output_file.parent.mkdir(exist_ok=True, parents=True)
 
     wsm = wrf_load_helper.WRFSimMetadata(
         start_datetime  = pd.Timestamp(args.exp_beg_time),
@@ -149,12 +216,13 @@ if __name__ == "__main__":
         frames_per_file = args.frames_per_wrfout_file,
     )
 
-    data = xr.merge([ 
+    data = [ 
         loadData(_ensemble_value, _input_dir, _avg_start_hours, args.hours_to_avg, wsm=wsm)
         for _ensemble_value, _casename, _input_dir, _avg_start_hours in zip(args.ensemble_values, args.casenames, args.input_dirs, args.avg_start_hours)
-    ])
-    
-    plot(data, args.output_file)
+    ]
+
+    data = xr.concat(data, dim="ensemble")
+    plot(data, args.ensemble_label, output_file)
 
 
 

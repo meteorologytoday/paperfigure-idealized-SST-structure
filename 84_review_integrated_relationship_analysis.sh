@@ -6,6 +6,7 @@ source 00_setup.sh
 offset=$(( 24 * 10 ))
 dhr=$(( 24*5 ))
 
+for bl_scheme in MYJ MYNN25 YSU ; do
 for target_lab in lab_FULL lab_SIMPLE ; do
 
     input_dirs=""
@@ -13,9 +14,7 @@ for target_lab in lab_FULL lab_SIMPLE ; do
     casenames=""
     ensemble_values=""
     for U in 20 ; do
-    for bl_scheme in MYNN25 ; do
     for wnm in 040 020 010 007 005 004 ; do
-    #for wnm in 040 004; do
     for dT in 100 ; do
 
         mph=""
@@ -33,7 +32,6 @@ for target_lab in lab_FULL lab_SIMPLE ; do
     done
     done
     done
-    done
 
 
     echo "Doing diagnostic simple"
@@ -41,14 +39,16 @@ for target_lab in lab_FULL lab_SIMPLE ; do
         --input-dirs $input_dirs          \
         --casenames $casenames            \
         --ensemble-values $ensemble_values   \
+        --ensemble-label '$L$ [ km ]'        \
         --exp-beg-time "2001-01-01 00:00:00" \
         --wrfout-data-interval 3600          \
         --frames-per-wrfout-file 12          \
         --avg-start-hours ${hrs_beg[@]}           \
         --hours-to-avg $dhr                  \
-        --output-file figures/integrated_relationship-varying-L-${target_lab}.svg
+        --output-file figures/integrated_relationship/integrated_relationship-varying-L-${bl_scheme}_${target_lab}.svg
 
 
+done
 done
 wait
 

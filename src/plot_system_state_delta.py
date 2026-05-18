@@ -419,7 +419,8 @@ if args.plot_part1 and base_exists:
     _ax, _thumbnail_numbering = nextAxes()
 
     # Version 2: shading = W, contour = TKE
-    mappable1 = _ax.contourf(X_W, Z_W, diff_ds["W"]*1e2, levels=w_levs, cmap=cmap_diverge, extend="both")
+    #mappable1 = _ax.contourf(X_W, Z_W, diff_ds["W"]*1e2, levels=w_levs, cmap=cmap_diverge, extend="both")
+    mappable1 = _ax.contourf(X_W, Z_W, data["ds"]["W"]*1e2, levels=w_levs, cmap=cmap_diverge, extend="both")
     cax = tool_fig_config.addAxesNextToAxes(fig, _ax, "right", thickness=0.03, spacing=0.05)
     cbar0 = plt.colorbar(mappable1, cax=cax, orientation="vertical")
 

@@ -15,14 +15,14 @@ nproc=1
 proc_cnt=0
 
 target_labs=(
-    lab_FULL
     lab_SIMPLE
+    lab_FULL
 )
 
 bl_schemes=(
+    YSU
     MYNN25
     MYJ
-    YSU
 )
 
 wnms=(
