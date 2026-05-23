@@ -36,26 +36,26 @@ plot_codes=(
     # Fig 5 and 6
     $sh 15_plot_system_response.sh
 
-    # Fig 7 and 8
-    $sh 17_plot_DIV_analysis.sh
-    
-    # Fig 9
+    # Fig 7
     $sh 19_plot_dF_flux_decomposition_vary_dSST.sh
 
-    # Fig 10
-    $sh 84_review_integrated_relationship_analysis.sh
-
-    # Fig 11
-    $sh 20_plot_dF_flux_decomposition_vary_wnm.sh
-    
-    # Fig 12
+    # Fig 8
     $sh 85_review_integrated_relationship_analysis_varying_dSST.sh
 
-    # Fig 12
-    $sh 22_plot_coherence_analysis_vary_wnm.sh
+    # Fig 9
+    $sh 20_plot_dF_flux_decomposition_vary_wnm.sh
 
-    # Fig 13
-    $sh 23_plot_Ro_analysis.sh
+    # Fig 10
+    $sh 84_review_integrated_relationship_analysis_varying_wnm.sh
+
+    # Fig 11
+    $sh 21_plot_linearity.sh
+
+    # Fig 12-15
+    $sh 17_plot_DIV_analysis.sh
+
+    # Fig S1
+    $sh 81_review_highwnm_snapshot.sh
 )
 
 nparams=2

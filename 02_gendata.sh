@@ -8,13 +8,15 @@
 # actually the same outcome
 ./92_make_softlinks.sh
 
-# Generate the "delta"
-./93_generate_delta_analysis.sh
+# Check if all files are good
+./93_check_files.sh
 
+# Generate the "delta"
+./94_generate_delta_analysis.sh
 
 # Collect the analysis so that we
 # can plot phase diagram: response
 # as a function of dSST, wvm (L)
-./94_pack_data.sh
+./95_pack_data.sh
 
 

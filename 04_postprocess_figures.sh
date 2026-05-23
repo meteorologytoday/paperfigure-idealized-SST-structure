@@ -74,6 +74,33 @@ done
 done
 done
 
+echo "Merge divergence tendency analysis... "
+for bl_scheme in MYNN25 MYJ YSU ; do 
+for dT in 100; do
+for target_lab in SIMPLE FULL; do
+for _U in 10 20 ; do
+
+    hrs_beg=240
+    dhr=$( get_dhr $bl_scheme ) 
+    hrs_end=$(( $hrs_beg + $dhr ))
+    hrs=${hrs_beg}-${hrs_end}
+ 
+    if [ "$target_lab" = "FULL" ] ; then
+        mph="on"
+    else
+        mph="off"
+    fi
+    
+    svg_stack.py \
+        --direction=h \
+        $fig_dir/div_analysis_dhr-${dhr}/lab_${target_lab}/case_mph-${mph}_wnm010_U${_U}_dT100_${bl_scheme}/div_analysis_${hrs}_halfwindow-10.svg \
+        $fig_dir/div_analysis_dhr-${dhr}/lab_${target_lab}/case_mph-${mph}_wnm005_U${_U}_dT100_${bl_scheme}/div_analysis_${hrs}_halfwindow-10.svg \
+        > $fig_dir/merged-div_analysis_lab_${target_lab}_U${_U}_dT${dT}_${bl_scheme}.svg
+done
+done
+done
+done
+
 name_pairs=(
 
 # Main Text
@@ -94,7 +121,7 @@ name_pairs=(
     merged-div_analysis_lab_FULL_U10_dT100_MYNN25.svg                                              fig15 
 
 # Supplementary
-    cloud_rain_snapshots_dhr-1/lab_FULL/case_mph-on_wnm010_U20_dT100_MYNN25/cloud_rain_240-241.svg   figS01
+    cloud_rain_snapshots_dhr-1/lab_FULL/case_mph-on_wnm010_U20_dT100_MYNN25/cloud_rain_241-242.svg   figS01
 # MYJ
     timeseries/timeseries_wnm010_U20_dT100_MYJ_timeseries_smooth-25_000-360.svg                      figS02
     merged-snapshot-vertical-profile_wnm000_U20_dT000_MYJ.svg                                        figS03

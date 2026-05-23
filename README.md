@@ -11,6 +11,16 @@ This is the code to generate the figures of the paper "Examining the SST Tendenc
     - netCDF4
 2. ImageMagick >= 6.9.10
 
+
+# File descriptions
+
+- `00_setup.sh` : basic setup.
+- `01_main.sh`  : A complete run-through generating the figures.
+- `02_gendata.sh` : Generate all the pre-processing data
+- `03_make_figures.sh` : Generate all figures.
+- `04_postprocess_figures.sh` : Post-processing figures and put together the numbering. 
+
+
 # Reproducing Figures
 
 1. Clone this project.

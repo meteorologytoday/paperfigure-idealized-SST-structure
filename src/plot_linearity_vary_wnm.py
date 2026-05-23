@@ -388,7 +388,7 @@ if __name__ == "__main__":
         _ax = ax.flatten()[1]
         displaced_angle = - 90.0 - data["angle"][varname]
         _ax.plot(Ls_km, displaced_angle, marker='o', linestyle=linestyle, color=linecolor, label=varname_label)
-        _ax.set_ylabel("Displaced Phase Angle [ degree ]")
+        _ax.set_ylabel("Phase Angle [ degree ]")
        
         if not args.no_linearity_index:
             _ax = ax.flatten()[2]
