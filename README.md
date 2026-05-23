@@ -55,7 +55,7 @@ Then merge the split data through `cat gendata.tar.gz.split.?? > gendata.tar.gz`
 - Run `93_generate_delta_analysis.sh` to generate analysis for air-sea flux decompositions.
 - Run `94_pack_data.sh` to pack data generated from `93_generate_delta_analysis.sh` into single netCDF files.
 
-# Figures
+# Main Figures
 
 1. SST map and spectrum
 2. Exp design + vertical profile
@@ -63,12 +63,17 @@ Then merge the split data through `cat gendata.tar.gz.split.?? > gendata.tar.gz`
 4. Reference atmosphere state.
 5. Atmospheric response plot part 1: cross-section.
 6. Atmospheric response plot part 2: horizontal mean.
-7. Divergence budget analysis 1.
-8. Divergence budget analysis 2.
-9. Air-sea flux decomposition as a function of dSST.
-10. Air-sea flux decomposition as a function of wavelength L.
-11. Linearity as a function of wavelength L.
-12. Coherence analysis.
-13. Rossby number as a function of wavelength L.
+7. Air-sea flux decomposition as a function of dSST.
+8. Boundary layer property analysis as a function of dSST.
+9. Air-sea flux decomposition as a function of wavelength L.
+10. Boundary layer property analysis as a function of L.
+11. Spectrum analysis.
+12. Divergence budget analysis 1.
+13. Divergence budget analysis 2.
+14. Divergence budget analysis 3.
+15. Divergence budget analysis 4.
 
+# Supplementary Figures
 
+1. One hour snapshot of simulation.
+2-19. Analysis for MYJ and YSU schemes.
